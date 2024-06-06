@@ -1,5 +1,5 @@
 # dedupe
-A simple bash script to de-duplicate the urls based on hostnames and parameters
+A simple bash script to de-duplicate the urls based on hostnames and parameters.
 
 ## Installation
 ```
@@ -7,6 +7,5 @@ curl -sSL https://raw.githubusercontent.com/0xPugal/dedupe/master/dedupe -o dedu
 ```
 
 ## Usage
-```
-dedupe input.txt | tee output.txt
-```
++ ``dedupe input.txt`` - Specify the input file
++ ``cat input.txt | dedupe`` - Read input as stdin
