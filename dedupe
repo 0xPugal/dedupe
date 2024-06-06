@@ -22,11 +22,10 @@ normalize_url() {
 
 # Function to deduplicate URLs based on the normalized representation
 deduplicate_urls() {
-    local input_file="$1"
     declare -A unique_urls
     declare -A original_urls
 
-    # Read each URL from the input file
+    # Read each URL from stdin
     while IFS= read -r url; do
         # Skip empty or invalid lines
         if [ -z "$url" ]; then
@@ -41,13 +40,19 @@ deduplicate_urls() {
             unique_urls["$normalized_url"]=1
             original_urls["$normalized_url"]="$url"
         fi
-    done < "$input_file"
+    done
 
     # Output the unique original URLs
     for normalized in "${!original_urls[@]}"; do
         echo "${original_urls["$normalized"]}"
     done
 }
+
+# If no input file is provided, read from stdin
+if [ $# -eq 0 ]; then
+    deduplicate_urls
+    exit 0
+fi
 
 # Ensure a valid input file is provided
 if [ $# -ne 1 ]; then
@@ -56,4 +61,9 @@ if [ $# -ne 1 ]; then
 fi
 
 # Deduplicate the URLs from the provided input file
-deduplicate_urls "$1"
+if [ ! -f "$1" ]; then
+    echo "Error: Input file not found: $1"
+    exit 1
+fi
+
+deduplicate_urls < "$1"
