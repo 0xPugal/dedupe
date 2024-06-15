@@ -1,64 +1,141 @@
 #!/bin/bash
 
+# Function to show help message
+show_help() {
+    echo "Usage: $0 [options] [<input_file>]"
+    echo "Options:"
+    echo "  -h, --help                    Usage/help info for dedupe"
+    echo "  -u, --urls <filename>         Filename containing URLs (use this if you don't pipe URLs via stdin)"
+    echo "  -V, --version                 Get current version for dedupe"
+    echo "  -qs, --query-strings-only     Only include URLs if they have query strings"
+    echo "  -ne, --no-extensions <ext1,ext2,...>"
+    echo "                                Do not include URLs with specific extensions"
+}
+
+# Function to show version
+show_version() {
+    echo "dedupe_v0.3"
+}
+
+# Function to show banner
+show_banner() {
+    echo "dedupe"
+    echo "______  _______ ______  _     _  _____  _______"
+    echo "|     \ |______ |     \ |     | |_____] |______"
+    echo "|_____/ |______ |_____/ |_____| |       |______ v0.3"
+    echo "                                      @0xPugal"
+}
+
 # Function to normalize a URL by hostname and sorted query parameter names
 normalize_url() {
     local url="$1"
-    # Extract the hostname
     local hostname=$(echo "$url" | awk -F '/' '{print $3}')
-    # Extract the query string
     local query_string=$(echo "$url" | awk -F '?' '{print $2}')
 
     if [ -n "$query_string" ]; then
-        # Extract and sort the parameter names
         sorted_param_names=$(echo "$query_string" | tr '&' '\n' | cut -d '=' -f1 | sort | tr '\n' '&')
-        sorted_param_names="${sorted_param_names%&}"  # Remove trailing '&'
-        # Return the unique representation with hostname and sorted parameter names
+        sorted_param_names="${sorted_param_names%&}"
         echo "${hostname}?${sorted_param_names}"
     else
-        # If there's no query string, return just the hostname
         echo "${hostname}"
     fi
 }
 
 # Function to deduplicate URLs based on the normalized representation
 deduplicate_urls() {
-    local input_file="$1"
+    local input="$1"
+    local query_strings_only="$2"
+    local no_extensions="$3"
     local seen_urls=()
 
-    # Read each URL from input file or stdin
     while IFS= read -r url; do
-        # Skip empty or invalid lines
         if [ -z "$url" ]; then
             continue
         fi
 
-        # Normalize the URL to get a unique representation based on hostname and sorted parameter names
+        # Check if the URL has any of the specified extensions
+        local has_extension=false
+        for ext in ${no_extensions//,/ }; do
+            if [[ "$url" == *".$ext"* ]]; then
+                has_extension=true
+                break
+            fi
+        done
+
+        if [ "$has_extension" == true ]; then
+            continue
+        fi
+
+        if [[ "$query_strings_only" == true && "$url" != *\?* ]]; then
+            continue
+        fi
+
         normalized_url=$(normalize_url "$url")
 
-        # Check if normalized URL has been seen before
         if ! [[ " ${seen_urls[@]} " =~ " $normalized_url " ]]; then
             seen_urls+=("$normalized_url")
             echo "$url"
         fi
-    done < "$input_file"
+    done < "$input"
 }
 
-# If no input file is provided, read from stdin
-if [ $# -eq 0 ]; then
-    deduplicate_urls /dev/stdin
+# Parse command-line arguments
+input_file=""
+query_strings_only=false
+no_extensions=""
+show_help_only=false
+
+# Show banner if no arguments are provided
+if [[ "$#" -eq 0 ]]; then
+    show_banner
     exit 0
 fi
 
-# Ensure a valid input file is provided
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <input_file>"
-    exit 1
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            show_help_only=true
+            shift
+            ;;
+        -u|--urls)
+            input_file="$2"
+            shift 2
+            ;;
+        -V|--version)
+            show_version
+            exit 0
+            ;;
+        -qs|--query-strings-only)
+            query_strings_only=true
+            shift
+            ;;
+        -ne|--no-extensions)
+            no_extensions="$2"
+            shift 2
+            ;;
+        *)
+            if [ -z "$input_file" ]; then
+                input_file="$1"
+            else
+                echo "Unknown option: $1"
+                show_help
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
+# Show help if -h or --help is specified
+if [[ "$show_help_only" == true ]]; then
+    show_help
+    exit 0
 fi
 
-# Deduplicate the URLs from the provided input file
-if [ ! -f "$1" ]; then
-    echo "Error: Input file not found: $1"
-    exit 1
+# If no input file is provided, use stdin
+if [ -z "$input_file" ]; then
+    input_file="/dev/stdin"
 fi
 
-deduplicate_urls "$1"
+# Execute deduplication based on provided options
+deduplicate_urls "$input_file" "$query_strings_only" "$no_extensions"
