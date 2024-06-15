@@ -7,8 +7,9 @@ show_help() {
     echo "  -h, --help                    Usage/help info for dedupe"
     echo "  -u, --urls <filename>         Filename containing URLs (use this if you don't pipe URLs via stdin)"
     echo "  -V, --version                 Get current version for dedupe"
-    echo "  -s, --similar                 Remove similar URLs (based on integers and image/font files)"
     echo "  -qs, --query-strings-only     Only include URLs if they have query strings"
+    echo "  -ne, --no-extensions <ext1,ext2,...>"
+    echo "                                Do not include URLs with specific extensions"
 }
 
 # Function to show version
@@ -21,9 +22,8 @@ show_banner() {
     echo "dedupe"
     echo "______  _______ ______  _     _  _____  _______"
     echo "|     \ |______ |     \ |     | |_____] |______"
-    echo "|_____/ |______ |_____/ |_____| |       |______v0.3"
+    echo "|_____/ |______ |_____/ |_____| |       |______ v0.3"
     echo "                                      @0xPugal"
-
 }
 
 # Function to normalize a URL by hostname and sorted query parameter names
@@ -45,10 +45,24 @@ normalize_url() {
 deduplicate_urls() {
     local input="$1"
     local query_strings_only="$2"
+    local no_extensions="$3"
     local seen_urls=()
 
     while IFS= read -r url; do
         if [ -z "$url" ]; then
+            continue
+        fi
+
+        # Check if the URL has any of the specified extensions
+        local has_extension=false
+        for ext in ${no_extensions//,/ }; do
+            if [[ "$url" == *".$ext"* ]]; then
+                has_extension=true
+                break
+            fi
+        done
+
+        if [ "$has_extension" == true ]; then
             continue
         fi
 
@@ -65,29 +79,10 @@ deduplicate_urls() {
     done < "$input"
 }
 
-# Function to remove similar URLs
-remove_similar_urls() {
-    local input="$1"
-    local seen_urls=()
-
-    while IFS= read -r url; do
-        if [ -z "$url" ]; then
-            continue
-        fi
-
-        base_url=$(echo "$url" | sed -E 's/[0-9]+|\.png|\.jpg|\.woff|\.js|\.html//g')
-
-        if ! [[ " ${seen_urls[@]} " =~ " $base_url " ]]; then
-            seen_urls+=("$base_url")
-            echo "$url"
-        fi
-    done < "$input"
-}
-
 # Parse command-line arguments
 input_file=""
 query_strings_only=false
-similar=false
+no_extensions=""
 show_help_only=false
 
 # Show banner if no arguments are provided
@@ -110,13 +105,13 @@ while [[ $# -gt 0 ]]; do
             show_version
             exit 0
             ;;
-        -s|--similar)
-            similar=true
-            shift
-            ;;
         -qs|--query-strings-only)
             query_strings_only=true
             shift
+            ;;
+        -ne|--no-extensions)
+            no_extensions="$2"
+            shift 2
             ;;
         *)
             if [ -z "$input_file" ]; then
@@ -143,8 +138,4 @@ if [ -z "$input_file" ]; then
 fi
 
 # Execute deduplication based on provided options
-if [ "$similar" == true ]; then
-    remove_similar_urls "$input_file"
-else
-    deduplicate_urls "$input_file" "$query_strings_only"
-fi
+deduplicate_urls "$input_file" "$query_strings_only" "$no_extensions"
