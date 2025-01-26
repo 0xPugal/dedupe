@@ -37,7 +37,7 @@ const (
 const currentVersion = "v0.1"
 
 // URL to fetch the latest version
-const versionURL = "https://raw.githubusercontent.com/0xpugal/dedupe/main/VERSION"
+const versionURL = "https://raw.githubusercontent.com/0xpugal/dedupe/master/VERSION"
 
 func showBanner() {
 	boldWhite := colorBold + colorWhite
