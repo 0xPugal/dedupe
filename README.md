@@ -6,6 +6,8 @@
 [![GitHub issues](https://img.shields.io/github/issues/0xpugal/dedupe)](https://github.com/0xpugal/dedupe/issues)
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/0xpugal/dedupe)](https://github.com/0xpugal/dedupe/pulls)
 
+![dedupe](https://github.com/user-attachments/assets/e6c6af2f-a9d2-4742-9884-11f0c7f7cbf7)
+
 **Dedupe** is a high-performance, memory-optimized Go tool designed to deduplicate URLs from a list. It supports filtering based on query strings, extensions, and more. Perfect for cleaning up large lists of URLs for web scraping, penetration testing, or bug bounty.
 
 ---
