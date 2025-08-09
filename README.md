@@ -15,21 +15,22 @@
 ## Features
 
 - **Fast and Efficient**: Built in Go for high performance and low memory usage.
-- **Deduplication**: Removes duplicate URLs based on hostname and query parameters.
+- **Deduplication**: Removes duplicate URLs based on hostname, path (normalized), and query parameter keys.
 - **Filtering**:
-  - Exclude URLs with specific extensions (e.g., `.js`, `.css`, `.png`).
-  - Include only URLs with query strings.
-  - Remove similar URLs (e.g., `/api/user/1` and `/api/user/2`).
-- **Flexible Modes**: Enable multiple filters using the `--mode` flag.
+  - Exclude URLs with specific extensions (`-fe css,png,js`) or include only certain extensions (`-me php,js`).
+  - Include only URLs with query strings (`-qs`).
+  - Optional regex-based normalization (`-r`) treats integers and GUIDs in paths as placeholders, effectively deduplicating similar URLs like `/api/user/1` vs `/api/user/2`.
+  - Optional language/country code normalization in paths (`-lc`).
+- **Combine flags freely**: Toggle any combination without a separate `--mode`.
 - **Input/Output**:
-  - Accepts URLs from a file or stdin.
-  - Outputs deduplicated URLs to stdout or a file.
+  - Accepts URLs from a file (`-i`) or stdin.
+  - Writes to stdout or to a file via `-o`.
 
 ---
 
 ## Installation
 ### Prerequisites
-- Go 1.20 or higher.
+- Go 1.23 or higher.
 
 ### Install from Source
 ```bash
@@ -49,34 +50,48 @@ go install github.com/0xpugal/dedupe@latest
 
 ### Basic Usage
 ```bash
-# Deduplicate URLs from a file
-./dedupe -u urls.txt
+# stdin → stdout
+cat urls.txt | dedupe -qs
 
-# Only include URLs with query strings
-./dedupe -u urls.txt -qs
+# stdin → file (Linux/Mac)
+cat urls.txt | dedupe -qs -o output.txt
 
-# Exclude URLs with specific extensions
-./dedupe -u urls.txt -ne "js,css,png,jpg"
+# stdin → file (Windows PowerShell)
+type urls.txt | .\dedupe.exe -qs -o output.txt
 
-# Remove similar URLs (e.g., /api/user/1 and /api/user/2)
-./dedupe -u urls.txt -s
+# file → file
+dedupe -i urls.txt -o output.txt -qs
 
-# Enable multiple modes (query strings, similar URLs, no extensions)
-./dedupe -u urls.txt --mode "qs,s,ne"
+# exclude extensions
+dedupe -i urls.txt -o output.txt -fe "js,css,png,jpg"
+
+# include only these extensions
+dedupe -i urls.txt -o output.txt -me "php,asp"
+
+# normalize integers/GUIDs in paths (treat /1 and /2 as same)
+dedupe -i urls.txt -o output.txt -r
+
+# also normalize language/country codes in paths
+dedupe -i urls.txt -o output.txt -r -lc
 ```
 
 ### Help menu
 ```
+Usage:
+  cat input.txt | dedupe --output output.txt
+  dedupe --input input.txt --output output.txt
+
 Options:
-  -h, --help                     Usage/help info for dedupe
-  -u, --urls <filename>          Filename containing URLs (use this if you don't pipe URLs via stdin)
-  -V, --version                  Get current version for dedupe
-  -U, --update                   Check for updates
-  -r, --regex-parse              Use regex parsing (slower but more thorough)
-  -s, --similar                  Remove similar URLs (based on integers and image/font files)
-  -qs, --query-strings-only      Only include URLs if they have query strings
-  -ne, --no-extensions ext1,ext2 Do not include URLs with specific extensions
-  -m, --mode mode1,mode2         Enable specific modes/filters (r,s,qs,ne)
+  -i,  --input <file>            Input file (defaults to stdin)
+  -o,  --output <file>           Output file (defaults to stdout)
+  -qs, --query-string-only       Only include URLs that have query strings
+  -fe, --filter-extensions list  Exclude URLs with these extensions (css,png,js,jpg)
+  -me, --match-extensions list   Include only URLs with these extensions (php,aspx,jsp)
+  -r,  --regex-parse             Use regex normalization (GUIDs, integers)
+  -lc, --lang-country            Deduplicate by language/country codes
+  -V,  --version                 Show version
+  -U,  --update                  Check for updates and install latest
+  -h,  --help                    Show this help
 ```
 
 ---
@@ -97,10 +112,25 @@ https://example.com/login.asp?redirect=/dashboard
 
 ### Command
 ```bash
-./dedupe -u urls.txt -ne "js,css,png" -qs
+dedupe -i urls.txt -fe "js,css,png" -qs
 
 https://example.com/api/user/1?name=John
 https://example.com/login.asp?redirect=/dashboard
+```
+
+---
+
+## Configuration file (optional)
+
+Place a `config.yml` next to the binary or in the working directory to set defaults. CLI flags override config values.
+
+Example `config.yml`:
+
+```yaml
+query_string_only: true
+filter_extensions: [js, css, png]
+match_extensions: []
+lang_country: true
 ```
 ---
 
